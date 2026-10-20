@@ -31,7 +31,7 @@
 
 面向普通用户，无需任何开发环境：
 
-1. 打开 [Releases](https://github.com/xiao-fei-sea/mojian/releases) 页面，下载最新版的 `墨笺 Setup x.y.z.exe`。
+1. 打开 [Releases](https://github.com/xiao-fei-sea/mojian/releases) 页面（当前最新：[v1.0.0](https://github.com/xiao-fei-sea/mojian/releases/tag/v1.0.0)），下载 `MoJian-Setup-x.y.z.exe`。
 2. 双击运行安装程序，按向导选择安装目录（可自定义）并完成安装。
 3. 安装完成后会自动创建桌面快捷方式，双击即可使用。
 
@@ -68,6 +68,7 @@ npm run package:compat
 
 # 方式二：打包为 NSIS 安装包（推荐用于分发）
 # 产物：dist/墨笺 Setup 1.0.0.exe
+# （发布到 Release 时重命名为 ASCII 文件名 MoJian-Setup-x.y.z.exe）
 npm run installer
 ```
 
