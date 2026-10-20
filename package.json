@@ -14,7 +14,7 @@
     "clean:dist": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
     "package": "npm run clean:dist && electron-packager . MoJian --platform=win32 --arch=x64 --icon=build/icon.ico --out=dist --overwrite --asar --ignore=\"^/build\" --ignore=\"^/assets\" --ignore=\"^/dist\"",
     "package:compat": "npm run package && node build/stock-launcher.js",
-    "installer": "electron-builder --win"
+    "installer": "electron-builder --win --publish never"
   },
   "dependencies": {
     "highlight.js": "^11.10.0",
@@ -40,6 +40,7 @@
       "src/**/*",
       "package.json"
     ],
+    "afterPack": "build/after-pack.js",
     "win": {
       "target": [
         {
@@ -49,7 +50,8 @@
           ]
         }
       ],
-      "icon": "build/icon.ico"
+      "icon": "build/icon.ico",
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,

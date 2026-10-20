@@ -27,9 +27,20 @@
 - [@electron/packager](https://github.com/electron/packager) / [electron-builder](https://www.electron.build/) — 打包
 - [sharp](https://sharp.pixelplumbing.com/) + png-to-ico — 图标生成
 
+## 下载与安装
+
+面向普通用户，无需任何开发环境：
+
+1. 打开 [Releases](https://github.com/xiao-fei-sea/mojian/releases) 页面，下载最新版的 `墨笺 Setup x.y.z.exe`。
+2. 双击运行安装程序，按向导选择安装目录（可自定义）并完成安装。
+3. 安装完成后会自动创建桌面快捷方式，双击即可使用。
+
+> Windows 可能提示「Windows 已保护你的电脑」，这是因为安装包未做代码签名，点击「更多信息 → 仍要运行」即可。
+> 安装包为 NSIS 格式，支持自定义安装路径，并提供完整的卸载入口（在「设置 → 应用」或安装目录中卸载）。
+
 ## 快速开始
 
-> 需要 Node.js 18+ 与 npm。
+从源码运行需要 Node.js 18+ 与 npm。
 
 ```bash
 # 安装依赖
@@ -48,18 +59,31 @@ npm start
 # 生成图标（可选，仅在更换源图后需要）
 npm run icon
 
-# 打包为免安装可执行目录：dist/MoJian-win32-x64/
+# 方式一：打包为免安装可执行目录
+# 产物：dist/MoJian-win32-x64/MoJian.exe
 npm run package
 
-# 兼容打包：把启动器替换为原版 electron.exe，
-# 用于规避 Windows「智能应用控制」对自定义启动器的拦截
+# 在方式一基础上替换启动器，规避 Windows「智能应用控制」对自定义启动器的拦截
 npm run package:compat
 
-# 生成 NSIS 安装包（需 electron-builder）
+# 方式二：打包为 NSIS 安装包（推荐用于分发）
+# 产物：dist/墨笺 Setup 1.0.0.exe
 npm run installer
 ```
 
 打包前请先退出正在运行的墨笺，否则 `dist/` 目录会被占用导致打包失败。
+
+`npm run installer` 首次执行需要从网络下载 electron 与 NSIS 构建资源，国内网络较慢或超时，
+可以指定镜像加速：
+
+```powershell
+$env:ELECTRON_BUILDER_BINARIES_MIRROR="https://npmmirror.com/mirrors/electron-builder-binaries/"
+npm run installer
+```
+
+> 说明：安装包通过 `build/after-pack.js` 写入应用图标与版本信息。之所以不用 electron-builder
+> 内置的资源编辑，是因为其依赖的 winCodeSign 压缩包含有 macOS 符号链接，在普通权限的 Windows
+> 上解压会失败；该脚本改为调用本地缓存的 rcedit 完成同样的工作。
 
 ## 快捷键
 
@@ -111,6 +135,7 @@ md编辑器/
 │   ├── icon.ico             # 打包用图标
 │   ├── icon.png             # 打包用图标
 │   ├── make-icon.js         # 从源图生成图标
+│   ├── after-pack.js        # electron-builder 打包后写入图标与版本信息
 │   └── stock-launcher.js    # package:compat 启动器替换脚本
 ├── assets/
 │   └── 极简 Markdown 编辑器图标.png  # 图标源图
