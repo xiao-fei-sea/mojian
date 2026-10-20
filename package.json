@@ -1,0 +1,61 @@
+{
+  "name": "mojian",
+  "productName": "墨笺",
+  "version": "1.0.0",
+  "description": "墨笺 —— 简约的本地 Markdown 编辑器",
+  "main": "src/main.js",
+  "author": "local",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --dev",
+    "icon": "node build/make-icon.js",
+    "clean:dist": "node -e \"require('fs').rmSync('dist',{recursive:true,force:true})\"",
+    "package": "npm run clean:dist && electron-packager . MoJian --platform=win32 --arch=x64 --icon=build/icon.ico --out=dist --overwrite --asar --ignore=\"^/build\" --ignore=\"^/assets\" --ignore=\"^/dist\"",
+    "package:compat": "npm run package && node build/stock-launcher.js",
+    "installer": "electron-builder --win"
+  },
+  "dependencies": {
+    "highlight.js": "^11.10.0",
+    "markdown-it": "^14.1.0",
+    "turndown": "^7.2.4",
+    "turndown-plugin-gfm": "^1.0.2"
+  },
+  "devDependencies": {
+    "@electron/packager": "^20.3.0",
+    "electron": "^33.2.0",
+    "electron-builder": "^25.1.8",
+    "png-to-ico": "^3.0.2",
+    "sharp": "^0.35.5"
+  },
+  "build": {
+    "appId": "com.local.mojian",
+    "productName": "墨笺",
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "墨笺"
+    }
+  }
+}

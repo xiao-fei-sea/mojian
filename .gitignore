@@ -1,0 +1,33 @@
+# 依赖
+node_modules/
+
+# 打包产物
+dist/
+out/
+release/
+
+# 图标生成的临时目录
+build/.ico-tmp/
+
+# 开发自检脚本（临时）
+build/_*.js
+build/_*.txt
+build/_*.png
+
+# 未被引用的旧素材
+/极简 Markdown 编辑器图标.png
+assets/md-editor-icon*.jpg
+build/icon2.jpg
+
+# 日志与缓存
+*.log
+npm-debug.log*
+.npm/
+.cache/
+
+# 编辑器 / 系统
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
