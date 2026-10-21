@@ -147,6 +147,8 @@ const el = {
   sbChars: $('sbChars'),
   sbSave: $('sbSave'),
   findbar: $('findbar'),
+  tableBar: $('tableBar'),
+
   findInput: $('findInput'),
   replaceInput: $('replaceInput'),
   findCount: $('findCount'),
@@ -234,7 +236,8 @@ turndown.addRule('image', {
 
 function htmlToMarkdown(html) {
   try {
-    return turndown.turndown(html);
+    // 零宽空格只是编辑期的光标锚点（如空表格单元格），不能写进 Markdown
+    return turndown.turndown(html.split('\u200b').join(''));
   } catch {
     return state.text;
   }
@@ -794,6 +797,153 @@ function insertTable() {
     ta,
     `${need}| 列 1 | 列 2 | 列 3 |\n| --- | --- | --- |\n| 内容 | 内容 | 内容 |\n`
   );
+}
+
+/* ---------- 表格：光标所在表格的增删行列 ---------- */
+
+/** 光标所在的预览表格单元格（不在表格内返回 null） */
+function previewTableCtx() {
+  if (state.mode === 'preview') return null;
+  const sel = window.getSelection();
+  if (!sel || !sel.rangeCount) return null;
+  let node = sel.anchorNode;
+  if (node && node.nodeType === 3) node = node.parentElement;
+  if (!node || !node.closest || !el.preview.contains(node)) return null;
+  const cell = node.closest('td, th');
+  const row = cell && cell.parentElement;
+  const table = cell && cell.closest('table');
+  if (!row || !table) return null;
+  return {
+    table,
+    row,
+    header: row.parentElement && row.parentElement.nodeName === 'THEAD',
+    col: Array.prototype.indexOf.call(row.children, cell)
+  };
+}
+
+/** 新单元格里放一个零宽空格作光标锚点（写回 Markdown 时会被滤掉） */
+function makeTableCell(header) {
+  const cell = document.createElement(header ? 'th' : 'td');
+  cell.appendChild(document.createTextNode(ZWSP));
+  return cell;
+}
+
+/** 把光标放进某个单元格的开头 */
+function focusTableCell(cell) {
+  if (!cell) return;
+  if (!cell.firstChild) cell.appendChild(document.createTextNode(ZWSP));
+  const r = document.createRange();
+  r.selectNodeContents(cell);
+  r.collapse(true);
+  const sel = window.getSelection();
+  sel.removeAllRanges();
+  sel.addRange(r);
+  state.previewRange = r.cloneRange();
+}
+
+/** 在当前单元格所在的表格里增删行列 */
+function tableOp(kind) {
+  const ctx = previewTableCtx();
+  if (!ctx) return;
+  const { table, row, header, col } = ctx;
+  const width = row.children.length;
+
+  if (kind === 'addRow') {
+    const tr = document.createElement('tr');
+    for (let i = 0; i < width; i++) tr.appendChild(makeTableCell(false));
+    if (header) {
+      // 表头下方加的是正文行
+      let body = table.querySelector('tbody');
+      if (!body) {
+        body = document.createElement('tbody');
+        table.appendChild(body);
+      }
+      body.insertBefore(tr, body.firstChild);
+    } else {
+      row.after(tr);
+    }
+    focusTableCell(tr.children[Math.min(col, width - 1)]);
+  } else if (kind === 'delRow') {
+    if (header) {
+      toast('表头行不能删除');
+      return;
+    }
+    const body = row.parentElement;
+    const next = row.nextElementSibling || row.previousElementSibling;
+    row.remove();
+    if (!body.children.length) {
+      // 只有表头的表格在 Markdown 里不成立，整表删掉
+      table.remove();
+      updateTableBar();
+      onPreviewInput();
+      return;
+    }
+    focusTableCell(next && next.children[Math.min(col, next.children.length - 1)]);
+  } else if (kind === 'addCol') {
+    table.querySelectorAll('tr').forEach((tr) => {
+      const at = tr.children[col];
+      const cell = makeTableCell(tr.parentElement.nodeName === 'THEAD');
+      if (at) at.after(cell);
+      else tr.appendChild(cell);
+    });
+    focusTableCell(row.children[col + 1]);
+  } else if (kind === 'delCol') {
+    if (width <= 1) {
+      toast('至少要保留一列');
+      return;
+    }
+    table.querySelectorAll('tr').forEach((tr) => {
+      const cell = tr.children[col];
+      if (cell) cell.remove();
+    });
+    focusTableCell(row.children[Math.min(col, width - 2)]);
+  }
+
+  updateTableBar();
+  onPreviewInput();
+}
+
+let tableBarTimer = 0;
+
+/** 合并高频的选区 / 滚动事件，避免每次触发都强制排版 */
+function queueTableBar() {
+  if (tableBarTimer) return;
+  tableBarTimer = setTimeout(() => {
+    tableBarTimer = 0;
+    updateTableBar();
+  }, 60);
+}
+
+/** 依据光标位置显示 / 隐藏表格浮动工具条 */
+function updateTableBar() {
+  const ctx = previewTableCtx();
+  if (!ctx) {
+    el.tableBar.hidden = true;
+    return;
+  }
+  el.tableBar.querySelector('[data-table="delRow"]').disabled = ctx.header;
+  el.tableBar.querySelector('[data-table="delCol"]').disabled = ctx.row.children.length <= 1;
+  el.tableBar.hidden = false;
+
+  const rect = ctx.table.getBoundingClientRect();
+  const bar = el.tableBar;
+  const left = Math.min(Math.max(8, rect.left), window.innerWidth - bar.offsetWidth - 8);
+  let top = rect.top - bar.offsetHeight - 6;
+  if (top < 8) top = Math.min(rect.bottom + 6, window.innerHeight - bar.offsetHeight - 8);
+  bar.style.left = left + 'px';
+  bar.style.top = top + 'px';
+}
+
+function bindTableBar() {
+  // 按下按钮时不要抢走预览区选区，否则取不到当前单元格
+  el.tableBar.addEventListener('mousedown', (e) => e.preventDefault());
+  el.tableBar.addEventListener('click', (e) => {
+    const btn = e.target.closest('[data-table]');
+    if (btn && !btn.disabled) tableOp(btn.dataset.table);
+  });
+  document.addEventListener('selectionchange', queueTableBar);
+  el.previewScroll.addEventListener('scroll', queueTableBar, { passive: true });
+  window.addEventListener('resize', queueTableBar);
 }
 
 function insertHr() {
@@ -2269,6 +2419,11 @@ function bindFindbar() {
     if (e.isComposing) return; // 输入法组词过程中不跳
     refreshFindMatches({ jump: true });
   });
+  // 中文等输入法提交组词后不一定补发 input 事件，只靠上面的监听会继续按旧词检索，
+  // 因此组词结束时也刷新一次
+  el.findInput.addEventListener('compositionend', () => {
+    refreshFindMatches({ jump: true });
+  });
   el.findInput.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -2400,6 +2555,8 @@ function boot() {
   bindEditor();
   bindSplitter();
   bindFindbar();
+  bindTableBar();
+
   bindDragDrop();
   bindWindow();
   bindTabs();

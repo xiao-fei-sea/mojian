@@ -900,3 +900,30 @@ html[data-theme="dark"] .toast { background: rgba(226, 228, 235, .96); color: #1
   .pane-preview, .scroll { display: block; overflow: visible; }
   .markdown-body { max-width: none; margin: 0; padding: 0; }
 }
+
+/* ---------- 表格浮动工具条（光标在表格内时出现） ---------- */
+.table-bar {
+  position: fixed;
+  z-index: 60;
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  background: var(--bg);
+  border: 1px solid var(--line-2);
+  border-radius: 8px;
+  box-shadow: var(--shadow-pop);
+}
+.table-bar-btn {
+  height: 24px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-2);
+  font-family: var(--font-ui);
+  font-size: 12px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.table-bar-btn:hover:not(:disabled) { background: var(--hover); color: var(--text); }
+.table-bar-btn:disabled { color: var(--text-3); opacity: .55; cursor: default; }
