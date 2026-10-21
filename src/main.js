@@ -3,6 +3,8 @@
 const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require('electron');
 const path = require('node:path');
 const fs = require('node:fs/promises');
+const http = require('node:http');
+const https = require('node:https');
 
 const isDev = process.argv.includes('--dev');
 
@@ -145,6 +147,127 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   app.quit();
+});
+
+/* ---------------- AI 助手：OpenAI 兼容接口流式请求 ---------------- */
+
+const aiRequests = new Map();
+
+ipcMain.on('ai:chat', (event, payload) => {
+  const { id, baseUrl, apiKey, model, messages } = payload || {};
+  const reply = (data) => {
+    if (!event.sender.isDestroyed()) event.sender.send('ai:stream', Object.assign({ id }, data));
+  };
+
+  let url;
+  try {
+    url = new URL(String(baseUrl || '').replace(/\/+$/, '') + '/chat/completions');
+  } catch {
+    reply({ type: 'error', message: '接口地址不合法' });
+    return;
+  }
+  if (!model) {
+    reply({ type: 'error', message: '请先填写模型名称' });
+    return;
+  }
+
+  const body = JSON.stringify({ model, messages, stream: true });
+  const lib = url.protocol === 'http:' ? http : https;
+  const req = lib.request(
+    {
+      method: 'POST',
+      hostname: url.hostname,
+      port: url.port || (url.protocol === 'http:' ? 80 : 443),
+      path: url.pathname + url.search,
+      headers: Object.assign(
+        {
+          'Content-Type': 'application/json',
+          Accept: 'text/event-stream',
+          'Content-Length': Buffer.byteLength(body)
+        },
+        apiKey ? { Authorization: 'Bearer ' + apiKey } : {}
+      )
+    },
+    (res) => {
+      const isStream = String(res.headers['content-type'] || '').includes('event-stream');
+
+      if (res.statusCode >= 400) {
+        let raw = '';
+        res.setEncoding('utf8');
+        res.on('data', (c) => { raw += c; });
+        res.on('end', () => {
+          aiRequests.delete(id);
+          let msg = raw;
+          try {
+            const j = JSON.parse(raw);
+            msg = (j.error && j.error.message) || j.message || raw;
+          } catch {}
+          reply({ type: 'error', message: 'HTTP ' + res.statusCode + '：' + msg });
+        });
+        return;
+      }
+
+      if (!isStream) {
+        // 少数网关不返回 SSE，按普通 JSON 处理
+        let raw = '';
+        res.setEncoding('utf8');
+        res.on('data', (c) => { raw += c; });
+        res.on('end', () => {
+          aiRequests.delete(id);
+          let text = '';
+          try {
+            const j = JSON.parse(raw);
+            text = (j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content) || '';
+          } catch {}
+          if (text) reply({ type: 'delta', text });
+          reply({ type: 'done' });
+        });
+        return;
+      }
+
+      res.setEncoding('utf8');
+      let buf = '';
+      res.on('data', (chunk) => {
+        buf += chunk;
+        const lines = buf.split(/\r?\n/);
+        buf = lines.pop();
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          const data = line.slice(5).trim();
+          if (!data || data === '[DONE]') continue;
+          try {
+            const j = JSON.parse(data);
+            const delta = j.choices && j.choices[0] && j.choices[0].delta && j.choices[0].delta.content;
+            if (delta) reply({ type: 'delta', text: delta });
+          } catch {}
+        }
+      });
+      res.on('end', () => {
+        aiRequests.delete(id);
+        reply({ type: 'done' });
+      });
+      res.on('error', (err) => {
+        aiRequests.delete(id);
+        reply({ type: 'error', message: err.message });
+      });
+    }
+  );
+
+  aiRequests.set(id, req);
+  req.on('error', (err) => {
+    aiRequests.delete(id);
+    reply({ type: 'error', message: err.message });
+  });
+  req.write(body);
+  req.end();
+});
+
+ipcMain.on('ai:abort', (_event, id) => {
+  const req = aiRequests.get(id);
+  if (!req) return;
+  aiRequests.delete(id);
+  if (mainWindow) mainWindow.webContents.send('ai:stream', { id, type: 'done' });
+  req.destroy();
 });
 
 /* ---------------- 窗口控制 ---------------- */

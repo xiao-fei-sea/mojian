@@ -113,6 +113,10 @@
       </button>
     </div>
 
+    <button class="tool-btn" data-action="ai" title="AI 助手">
+      <svg viewBox="0 0 16 16"><path d="M8 2.6l1.35 3.05L12.4 7l-3.05 1.35L8 11.4 6.65 8.35 3.6 7l3.05-1.35z"/><path d="M12.4 10.6l.6 1.4 1.4.6-1.4.6-.6 1.4-.6-1.4-1.4-.6 1.4-.6z" stroke-width="1.1"/></svg>
+      <span class="tool-label">助手</span>
+    </button>
     <button class="tool-btn" data-action="theme" title="切换主题　Ctrl+Shift+D">
       <svg viewBox="0 0 16 16" class="icon-moon"><path d="M13.5 9.7A5.7 5.7 0 0 1 6.3 2.5a5.7 5.7 0 1 0 7.2 7.2z"/></svg>
       <svg viewBox="0 0 16 16" class="icon-sun"><circle cx="8" cy="8" r="3.1"/><path d="M8 1.7v1.5M8 12.8v1.5M1.7 8h1.5M12.8 8h1.5M3.6 3.6l1 1M11.4 11.4l1 1M12.4 3.6l-1 1M4.6 11.4l-1 1"/></svg>
@@ -173,6 +177,36 @@
     </div>
     <span class="es-hint">也可以把 .md 文件直接拖进窗口</span>
   </div>
+  <!-- ══════════ AI 助手面板 ══════════ -->
+  <aside class="ai-panel" id="aiPanel" hidden>
+    <header class="ai-head">
+      <span class="ai-title">AI 助手</span>
+      <button class="ai-icon-btn" id="aiSettingsBtn" title="接口设置">设置</button>
+      <button class="ai-icon-btn" id="aiClear" title="清空对话">清空</button>
+      <button class="ai-icon-btn" id="aiClose" title="关闭面板">×</button>
+    </header>
+    <div class="ai-settings" id="aiSettings" hidden>
+      <label>接口地址
+        <input id="aiBase" type="text" spellcheck="false" placeholder="https://api.openai.com/v1" />
+      </label>
+      <label>API Key
+        <input id="aiKey" type="password" spellcheck="false" placeholder="sk-…" />
+      </label>
+      <label>模型
+        <input id="aiModel" type="text" spellcheck="false" placeholder="gpt-4o-mini / deepseek-chat" />
+      </label>
+      <label>系统提示（可留空）
+        <textarea id="aiSystem" rows="2" spellcheck="false" placeholder="例如：你是一个简洁的中文写作助手"></textarea>
+      </label>
+      <p class="ai-hint">接口需兼容 OpenAI 的 /chat/completions（DeepSeek、Moonshot、智谱、Ollama 等）。配置只保存在本机。</p>
+      <button class="ai-save" id="aiSaveSettings">保存设置</button>
+    </div>
+    <div class="ai-messages" id="aiMessages"></div>
+    <div class="ai-composer">
+      <textarea id="aiInput" spellcheck="false" placeholder="输入问题，Enter 发送，Shift+Enter 换行"></textarea>
+      <button class="ai-send" id="aiSend">发送</button>
+    </div>
+  </aside>
 </div>
 
 <!-- ══════════ 状态栏 ══════════ -->

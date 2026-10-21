@@ -5,6 +5,7 @@ const { ipcRenderer, webUtils } = require('electron');
 const ALLOWED_INCOMING = new Set([
   'file:load',
   'win:state',
+  'ai:stream',
   'app:query-close'
 ]);
 
@@ -23,6 +24,10 @@ window.api = {
   /* --- 图片 --- */
   pickImages: () => ipcRenderer.invoke('image:pick'),
   importImages: (payload) => ipcRenderer.invoke('image:import', payload),
+
+  /* --- AI 助手 --- */
+  aiChat: (payload) => ipcRenderer.send('ai:chat', payload),
+  aiAbort: (id) => ipcRenderer.send('ai:abort', id),
 
   /* --- 文档状态 --- */
   confirmClose: () => ipcRenderer.send('doc:close-confirmed'),
